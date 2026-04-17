@@ -1,0 +1,270 @@
+{
+  "api_version": "v3.1",
+  "hotel_id": "HTL-DHAKA-0042",
+  "hotel_name": "The Grand Meridian",
+  "report_generated": "2025-03-01T07:00:00Z",
+  "reservations": [
+    {
+      "reservation_id": "RES-3001",
+      "status": "checked_out",
+      "guest": {
+        "guest_id": "G-101",
+        "full_name": "Arjun Mehta",
+        "email": "arjun.mehta@mailbox.in",
+        "nationality": "IN",
+        "loyalty_tier": "gold"
+      },
+      "room": {
+        "room_number": "204",
+        "type": "deluxe_double",
+        "floor": 2,
+        "beds": 2
+      },
+      "dates": {
+        "check_in": "2025-02-10",
+        "check_out": "2025-02-14"
+      },
+      "pricing": {
+        "rate_per_night": 120.00,
+        "nights": 4,
+        "discount_pct": 10,
+        "taxes": 38.88,
+        "total_charged": 388.88
+      },
+      "extras": [
+        {"item": "Airport Transfer", "charge": 25.00},
+        {"item": "Mini Bar", "charge": 18.50}
+      ],
+      "payment_method": "credit_card",
+      "notes": null
+    },
+    {
+      "reservation_id": "RES-3002",
+      "status": "checked_in",
+      "guest": {
+        "guest_id": "G-102",
+        "full_name": "Fatima Al-Rashid",
+        "email": "f.alrashid@amail.ae",
+        "nationality": "AE",
+        "loyalty_tier": "platinum"
+      },
+      "room": {
+        "room_number": "501",
+        "type": "suite",
+        "floor": 5,
+        "beds": 1
+      },
+      "dates": {
+        "check_in": "2025-02-26",
+        "check_out": "2025-03-05"
+      },
+      "pricing": {
+        "rate_per_night": 350.00,
+        "nights": 7,
+        "discount_pct": 15,
+        "taxes": 176.75,
+        "total_charged": 2626.75
+      },
+      "extras": [
+        {"item": "Spa Package", "charge": 120.00},
+        {"item": "Room Service", "charge": 67.30},
+        {"item": "Laundry", "charge": 22.00}
+      ],
+      "payment_method": "corporate_account",
+      "notes": "Platinum guest — complimentary welcome fruit basket arranged."
+    },
+    {
+      "reservation_id": "RES-3003",
+      "status": "confirmed",
+      "guest": {
+        "guest_id": "G-103",
+        "full_name": "David Osei",
+        "email": "d.osei@ghmail.gh",
+        "nationality": "GH",
+        "loyalty_tier": "standard"
+      },
+      "room": {
+        "room_number": "110",
+        "type": "standard_single",
+        "floor": 1,
+        "beds": 1
+      },
+      "dates": {
+        "check_in": "2025-03-05",
+        "check_out": "2025-03-07"
+      },
+      "pricing": {
+        "rate_per_night": 75.00,
+        "nights": 2,
+        "discount_pct": 0,
+        "taxes": 13.50,
+        "total_charged": 163.50
+      },
+      "extras": [],
+      "payment_method": "debit_card",
+      "notes": null
+    },
+    {
+      "reservation_id": "RES-3004",
+      "status": "cancelled",
+      "guest": {
+        "guest_id": "G-104",
+        "full_name": "Sophie Keller",
+        "email": "sophie.keller@eunet.de",
+        "nationality": "DE",
+        "loyalty_tier": "silver"
+      },
+      "room": {
+        "room_number": "312",
+        "type": "deluxe_double",
+        "floor": 3,
+        "beds": 2
+      },
+      "dates": {
+        "check_in": "2025-02-20",
+        "check_out": "2025-02-23"
+      },
+      "pricing": {
+        "rate_per_night": 120.00,
+        "nights": 3,
+        "discount_pct": 5,
+        "taxes": 0,
+        "total_charged": 0
+      },
+      "extras": [],
+      "payment_method": "credit_card",
+      "notes": "Cancelled 48hrs before check-in. No penalty applied."
+    },
+    {
+      "reservation_id": "RES-3005",
+      "status": "checked_out",
+      "guest": {
+        "guest_id": "G-105",
+        "full_name": "Lena Kowalski",
+        "email": "lena.k@polnet.pl",
+        "nationality": "PL",
+        "loyalty_tier": "gold"
+      },
+      "room": {
+        "room_number": "403",
+        "type": "superior_king",
+        "floor": 4,
+        "beds": 1
+      },
+      "dates": {
+        "check_in": "2025-02-15",
+        "check_out": "2025-02-18"
+      },
+      "pricing": {
+        "rate_per_night": 180.00,
+        "nights": 3,
+        "discount_pct": 10,
+        "taxes": 43.74,
+        "total_charged": 527.74
+      },
+      "extras": [
+        {"item": "Breakfast Buffet", "charge": 45.00},
+        {"item": "Gym Access", "charge": 15.00}
+      ],
+      "payment_method": "credit_card",
+      "notes": null
+    },
+    {
+      "reservation_id": "RES-3006",
+      "status": "checked_in",
+      "guest": {
+        "guest_id": "G-106",
+        "full_name": "Carlos Vega",
+        "email": "c.vega@latmail.mx",
+        "nationality": "MX",
+        "loyalty_tier": "standard"
+      },
+      "room": {
+        "room_number": "215",
+        "type": "deluxe_double",
+        "floor": 2,
+        "beds": 2
+      },
+      "dates": {
+        "check_in": "2025-02-27",
+        "check_out": "2025-03-03"
+      },
+      "pricing": {
+        "rate_per_night": 120.00,
+        "nights": 4,
+        "discount_pct": 0,
+        "taxes": 43.20,
+        "total_charged": 523.20
+      },
+      "extras": [
+        {"item": "Room Service", "charge": 55.00}
+      ],
+      "payment_method": "cash",
+      "notes": null
+    },
+    {
+      "reservation_id": "RES-3007",
+      "status": "checked_out",
+      "guest": {
+        "guest_id": "G-101",
+        "full_name": "Arjun Mehta",
+        "email": "arjun.mehta@mailbox.in",
+        "nationality": "IN",
+        "loyalty_tier": "gold"
+      },
+      "room": {
+        "room_number": "204",
+        "type": "deluxe_double",
+        "floor": 2,
+        "beds": 2
+      },
+      "dates": {
+        "check_in": "2025-01-20",
+        "check_out": "2025-01-25"
+      },
+      "pricing": {
+        "rate_per_night": 120.00,
+        "nights": 5,
+        "discount_pct": 10,
+        "taxes": 48.60,
+        "total_charged": 588.60
+      },
+      "extras": [
+        {"item": "Airport Transfer", "charge": 25.00}
+      ],
+      "payment_method": "credit_card",
+      "notes": "Repeat guest — left 5-star review after last stay."
+    },
+    {
+      "reservation_id": "RES-3008",
+      "status": "confirmed",
+      "guest": {
+        "guest_id": "G-108",
+        "full_name": "Amara Diallo",
+        "email": "a.diallo@afmail.sn",
+        "nationality": "SN",
+        "loyalty_tier": "standard"
+      },
+      "room": {
+        "room_number": "502",
+        "type": "suite",
+        "floor": 5,
+        "beds": 2
+      },
+      "dates": {
+        "check_in": "2025-03-10",
+        "check_out": "2025-03-14"
+      },
+      "pricing": {
+        "rate_per_night": 350.00,
+        "nights": 4,
+        "discount_pct": 0,
+        "taxes": 126.00,
+        "total_charged": 1526.00
+      },
+      "extras": [],
+      "payment_method": "bank_transfer",
+      "notes": "Honeymoon booking — request for rose petal decoration noted."
+    }
+  ]
+}
