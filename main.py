@@ -1,4 +1,5 @@
 import time, json
+from openpyxl import Workbook
 
 
 def main():
@@ -7,7 +8,11 @@ def main():
         data = json.load(file)
 
     rows = flatten_reservations(data)
-    print(rows[0])
+
+    if not rows:
+        raise ValueError("No data to write")
+
+    write_to_excel(rows, "hotel_report.xlsx")
 
 
 def flatten_reservations(data: dict) -> list[dict]:
@@ -41,6 +46,22 @@ def flatten_reservations(data: dict) -> list[dict]:
     except Exception as error:
         print(error)
         return None
+
+
+def write_to_excel(rows: list[dict], filename: str) -> None:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Reservations"
+
+    # writing the headers
+    headers = list(rows[0].keys())
+    ws.append(headers)
+
+    # writing the rows
+    for row in rows:
+        ws.append([row.get(header, "") for header in headers])
+
+    wb.save(filename)
 
 
 if __name__ == "__main__":
