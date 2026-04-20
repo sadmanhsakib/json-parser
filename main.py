@@ -78,11 +78,16 @@ def write_to_excel(rows: list[dict], filename: str) -> None:
 
 
 def style_sheet(ws, headers):
-    # 3a - Header row styling
+    # Header row styling
     header_font = Font(bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color=colors["dark-blue"], end_color=colors["dark-blue"], fill_type="solid")
+    header_fill = PatternFill(
+        start_color=colors["dark-blue"],
+        end_color=colors["dark-blue"],
+        fill_type="solid",
+    )
     header_alignment = Alignment(horizontal="center", vertical="center")
 
+    # applying the styling changes for the header row
     for col_num, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col_num)
         cell.font = header_font
@@ -91,10 +96,27 @@ def style_sheet(ws, headers):
 
     ws.row_dimensions[1].height = 30
 
-    # 3b - Alternating row colors
-    white_fill = PatternFill(start_color=colors["white"], end_color=colors["white"], fill_type="solid")
-    light_grey_fill = PatternFill(start_color=colors["light-grey"], end_color=colors["light-grey"], fill_type="solid")
+    # Alternating row colors
+    white_fill = PatternFill(
+        start_color=colors["white"], end_color=colors["white"], fill_type="solid"
+    )
+    light_grey_fill = PatternFill(
+        start_color=colors["light-grey"],
+        end_color=colors["light-grey"],
+        fill_type="solid",
+    )
 
+    # Status color coding
+    status_col = headers.index("Status") + 1
+
+    status_colors = {
+        "Checked Out": colors["light-green"],
+        "Checked In": colors["light-blue"],
+        "Confirmed": colors["light-yellow"],
+        "Cancelled": colors["light-red"],
+    }
+
+    # applying the row color change and status color coding
     for row in range(2, ws.max_row + 1):
         if row % 2 == 0:  # Even rows
             fill = white_fill
@@ -104,27 +126,18 @@ def style_sheet(ws, headers):
         for col in range(1, ws.max_column + 1):
             ws.cell(row=row, column=col).fill = fill
 
-    # 3c - Status color coding
-    status_col = headers.index("Status") + 1
-
-    status_colors = {
-        "Checked Out": colors["light-green"],
-        "Checked In": colors["light-blue"],
-        "Confirmed": colors["light-yellow"],
-        "Cancelled": colors["light-red"]
-    }
-
-    for row in range(2, ws.max_row + 1):
         status_cell = ws.cell(row=row, column=status_col)
         status_value = status_cell.value
 
         if status_value in status_colors:
-            status_fill = PatternFill(start_color=status_colors[status_value], 
-                                    end_color=status_colors[status_value], 
-                                    fill_type="solid")
+            status_fill = PatternFill(
+                start_color=status_colors[status_value],
+                end_color=status_colors[status_value],
+                fill_type="solid",
+            )
             status_cell.fill = status_fill
 
-    # 3d - Column widths
+    # Column widths
     column_widths = {
         "Reservation ID": 15,
         "Status": 12,
@@ -145,22 +158,22 @@ def style_sheet(ws, headers):
         "Taxes": 10,
         "Total Charged": 14,
         "Payment Method": 18,
-        "Notes": 60
+        "Notes": 60,
     }
 
-    for col_num, header in enumerate(headers, 1):
-        if header in column_widths:
-            ws.column_dimensions[get_column_letter(col_num)].width = column_widths[header]
-
-    # 3e - Freeze panes and auto-filter
+    # Freeze panes and auto-filter
     ws.freeze_panes = "A2"
     ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}1"
 
-    # 3f - Number formats
+    # Number formats
     currency_columns = ["Rate/Night", "Extras Total", "Taxes", "Total Charged"]
     percent_column = "Discount %"
 
     for col_num, header in enumerate(headers, 1):
+        if header in column_widths:
+            ws.column_dimensions[get_column_letter(col_num)].width = column_widths[
+                header
+            ]
         if header in currency_columns:
             for row in range(2, ws.max_row + 1):
                 ws.cell(row=row, column=col_num).number_format = "$#,##0.00"
