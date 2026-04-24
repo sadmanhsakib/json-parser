@@ -41,7 +41,7 @@ def flatten_reservations(data: dict) -> list[dict]:
                 "Nationality": reservation["guest"]["nationality"],
                 "Loyalty Tier": reservation["guest"]["loyalty_tier"],
                 "Room Number": reservation["room"]["room_number"],
-                "Room Type": reservation["room"]["type"],
+                "Room Type": reservation["room"]["type"].replace("_", " ").title(),
                 "Floor": reservation["room"]["floor"],
                 "Beds": reservation["room"]["beds"],
                 "Check-in": reservation["dates"]["check_in"],
@@ -228,7 +228,7 @@ def write_summary(wb: Workbook, rows: list[dict]) -> Workbook:
             }
 
         room_stats[room_type]["Reservations"] += 1
-        room_stats[room_type]["Total Revenue"] = row["Total Charged"]
+        room_stats[room_type]["Total Revenue"] += row["Total Charged"]
         room_stats[room_type]["Rates"].append(row["Rate/Night"])
 
     guest_stats = {}
