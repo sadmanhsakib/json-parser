@@ -1,16 +1,16 @@
-import time, json
+import json
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 
-DARK_BLUE   = "1F3864"
-MID_BLUE    = "2E75B6"
-LIGHT_BLUE  = "D6E4F0"
-WHITE       = "FFFFFF"
-LIGHT_GREY  = "F5F5F5"
-GREEN       = "E2EFDA"
-RED_BG      = "FCE4D6"
-YELLOW_BG   = "FFF2CC"
+DARK_BLUE = "1F3864"
+MID_BLUE = "2E75B6"
+LIGHT_BLUE = "B4C7DC"
+WHITE = "FFFFFF"
+LIGHT_GREY = "F5F5F5"
+LIGHT_GREEN = "AFD095"
+LIGHT_RED = "FFA6A6"
+LIGHT_YELLOW = "FFFFA6"
 
 
 def main():
@@ -52,7 +52,7 @@ def flatten_reservations(data: dict) -> list[dict]:
                 "Extras Total": sum(extra["charge"] for extra in reservation["extras"]),
                 "Taxes": reservation["pricing"]["taxes"],
                 "Total Charged": reservation["pricing"]["total_charged"],
-                "Payment Method": reservation["payment_method"],
+                "Payment Method": reservation["payment_method"].replace("_", "").title(),
                 "Notes": reservation["notes"] or "",
             }
             rows.append(row)
@@ -81,64 +81,41 @@ def write_to_excel(rows: list[dict]) -> Workbook:
 def style_sheet(wb: Workbook, headers: list) -> Workbook:
     ws = wb.active
 
-    # Header row styling
-    header_font = Font(bold=True, color="FFFFFF")
-    header_fill = PatternFill(
-        start_color=DARK_BLUE,
-        end_color=DARK_BLUE,
-        fill_type="solid",
-    )
-    header_alignment = Alignment(horizontal="center", vertical="center")
-
-    # applying the styling changes for the header row
-    for col_num, header in enumerate(headers, 1):
+    # adding the header
+    for col_num, value in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col_num)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = header_alignment
+        make_header_cell(cell, value)
 
     ws.row_dimensions[1].height = 30
 
     # Alternating row colors
-    white_fill = PatternFill(
-        start_color=WHITE, end_color=WHITE, fill_type="solid"
-    )
-    light_grey_fill = PatternFill(
-        start_color=LIGHT_GREY,
-        end_color=LIGHT_GREY,
-        fill_type="solid",
-    )
+    white_fill = PatternFill(fill_type="solid", fgColor=WHITE)
+    light_grey_fill = PatternFill(fill_type="solid", fgColor=LIGHT_GREY)
 
     # Status color coding
     status_col = headers.index("Status") + 1
 
     status_colors = {
-        "Checked Out": GREEN,
+        "Checked Out": LIGHT_GREEN,
         "Checked In": LIGHT_BLUE,
-        "Confirmed": YELLOW_BG,
-        "Cancelled": RED_BG,
+        "Confirmed": LIGHT_YELLOW,
+        "Cancelled": LIGHT_RED,
     }
 
-    # applying the row color change and status color coding
     for row in range(2, ws.max_row + 1):
-        if row % 2 == 0:  # Even rows
-            fill = white_fill
-        else:  # Odd rows
-            fill = light_grey_fill
-
+        # checking for even and odd row number
+        fill = white_fill if row % 2 == 0 else light_grey_fill
+            
+        # adding the row color change
         for col in range(1, ws.max_column + 1):
             ws.cell(row=row, column=col).fill = fill
 
         status_cell = ws.cell(row=row, column=status_col)
         status_value = status_cell.value
 
+        # changing the color for each cell in status column
         if status_value in status_colors:
-            status_fill = PatternFill(
-                start_color=status_colors[status_value],
-                end_color=status_colors[status_value],
-                fill_type="solid",
-            )
-            status_cell.fill = status_fill
+            status_cell.fill = PatternFill(fill_type="solid", fgColor=status_colors[status_value])
 
     # Column widths
     column_widths = {
@@ -164,8 +141,11 @@ def style_sheet(wb: Workbook, headers: list) -> Workbook:
         "Notes": 60,
     }
 
-    # Freeze panes and auto-filter
+    # freezes the rows before A2 (the header row)
+    # when scrolling down the header row always remain visible
     ws.freeze_panes = "A2"
+    
+    # using the header row as a reference for auto_filler function
     ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}1"
 
     # Number formats
@@ -190,8 +170,8 @@ def style_sheet(wb: Workbook, headers: list) -> Workbook:
 def make_header_cell(cell, text):
     """Style a single header cell: dark blue bg, white bold text, centered."""
     cell.value = text
-    cell.font = Font(name="Arial", bold=True, color=WHITE, size=10)
-    cell.fill = PatternFill("solid", fgColor=DARK_BLUE)
+    cell.font = Font(name="Noto Sans Lisu", bold=True, color=WHITE, size=10)
+    cell.fill = PatternFill(fill_type="solid", fgColor=DARK_BLUE)
     cell.alignment = Alignment(horizontal="center", vertical="center")
 
 
@@ -199,9 +179,6 @@ def write_summary(wb: Workbook, rows: list[dict]) -> Workbook:
     ws = wb.create_sheet("Summary")
     ws.sheet_view.showGridLines = False
 
-    # ── STEP 1: Aggregate everything in pure Python FIRST ─────────────────
-    # Rule: never read back from the worksheet to calculate.
-    # Always compute from the source list, then write once.
     total_reservations = len(rows)
     total_revenue = sum(
         row["Total Charged"] for row in rows if row["Status"] != "Cancelled"
@@ -209,11 +186,8 @@ def write_summary(wb: Workbook, rows: list[dict]) -> Workbook:
     active_guests = sum(
         1 for row in rows if row["Status"] in ("Checked In", "Confirmed")
     )
-    avg_stay = sum(row["Nights"] for row in rows) / total_reservations
+    avg_stay = round(sum(row["Nights"] for row in rows) / total_reservations, 1)
 
-    # ── Room type aggregation ──────────────────────────────────────────────
-    # Build a dict keyed by room type.
-    # Each value is another dict holding the stats we need.
     room_stats = {}
 
     for row in rows:
@@ -247,15 +221,6 @@ def write_summary(wb: Workbook, rows: list[dict]) -> Workbook:
         # Note: Loyalty Tier is set on first encounter.
         # Safe here because the same guest always has the same tier in this dataset.
 
-    # ── STEP 2: Write the KPI block ───────────────────────────────────────
-    # We place KPIs in a 2-column grid starting at row 1.
-    # Layout:
-    #   B1: label        D1: label
-    #   B2: value        D2: value
-    #   (empty row 3)
-    #   B4: label        D4: label
-    #   B5: value        D5: value
-
     for label, value, label_cell, value_cell in [
         ("Total Reservations", total_reservations, "B1", "B2"),
         ("Total Revenue", f"${total_revenue:,.2f}", "D1", "D2"),
@@ -266,19 +231,17 @@ def write_summary(wb: Workbook, rows: list[dict]) -> Workbook:
         vc = ws[value_cell]
 
         lc.value = label
-        lc.font = Font(name="Arial", bold=True, size=10, color=WHITE)
+        lc.font = Font(name="Noto Sans Lisu", bold=True, size=10, color=WHITE)
         lc.fill = PatternFill("solid", fgColor=DARK_BLUE)
         lc.alignment = Alignment(horizontal="center")
 
         vc.value = value
-        vc.font = Font(name="Arial", bold=True, size=18, color=DARK_BLUE)
+        vc.font = Font(name="Bahnschrift", bold=True, size=18, color=DARK_BLUE)
         vc.fill = PatternFill("solid", fgColor=LIGHT_BLUE)
         vc.alignment = Alignment(horizontal="center")
 
-    # ── STEP 3: Revenue by Room Type table ────────────────────────────────
-    # Starts at row 9 (rows 6-8 act as visual breathing room)
-
     room_headers = ["Room Type", "Reservations", "Total Revenue", "Avg Rate/Night"]
+    # Starts at row 9 (rows 6-8 act as visual breathing room)
     start_row = 9
 
     # Write header row
@@ -293,9 +256,7 @@ def write_summary(wb: Workbook, rows: list[dict]) -> Workbook:
     )
 
     for row_index, (room_type, stats) in enumerate(sorted_rooms, start_row + 1):
-        avg_rate = sum(stats["Rates"]) / len(
-            stats["Rates"]
-        )  # average from the list we built
+        avg_rate = sum(stats["Rates"]) / len(stats["Rates"])  # average from the list we built
         bg = WHITE if row_index % 2 == 0 else LIGHT_GREY  # alternating rows
 
         data = [
@@ -308,19 +269,18 @@ def write_summary(wb: Workbook, rows: list[dict]) -> Workbook:
             cell = ws.cell(row=row_index, column=column_index)
             cell.value = val
             cell.fill = PatternFill("solid", fgColor=bg)
-            cell.font = Font(name="Arial", size=10)
+            cell.font = Font(name="Bahnschrift", size=10)
             cell.alignment = Alignment(
                 horizontal="right" if column_index > 2 else "left"
             )
 
-    # ── STEP 4: Top Guests table ──────────────────────────────────────────
-    # Starts at row 16 (leaves a gap after the room type table)
-
     guest_headers = ["Guest Name", "Stays", "Total Spent", "Loyalty Tier"]
+    # Starts at row 16 (leaves a gap after the room type table)
     guest_start = 16
 
-    for ci, h in enumerate(guest_headers, 2):
-        make_header_cell(ws.cell(row=guest_start, column=ci), h)
+    for column_index, header in enumerate(guest_headers, 2):
+        make_header_cell(ws.cell(row=guest_start, column=column_index), header
+    )
 
     # Sort by Total Spent descending — biggest spender first
     sorted_guests = sorted(
@@ -339,7 +299,7 @@ def write_summary(wb: Workbook, rows: list[dict]) -> Workbook:
             cell = ws.cell(row=row_index, column=column_index)
             cell.value = val
             cell.fill = PatternFill("solid", fgColor=bg)
-            cell.font = Font(name="Arial", size=10)
+            cell.font = Font(name="Bahnschrift", size=10)
             cell.alignment = Alignment(
                 horizontal="right" if column_index in (3, 4) else "left"
             )
@@ -352,7 +312,4 @@ def write_summary(wb: Workbook, rows: list[dict]) -> Workbook:
     return wb
 
 if __name__ == "__main__":
-    start_time = time.time()
     main()
-    end_time = time.time()
-    print(f"Execution Time: {end_time-start_time}")
