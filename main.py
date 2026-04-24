@@ -3,27 +3,30 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 
-colors = {
-    "dark-blue": "1F3864",
-    "white": "FFFFFF",
-    "light-grey": "F5F5F5",
-    "light-green": "C6EFCE",
-    "light-blue": "DDEBF7",
-    "light-yellow": "FFF2CC",
-    "light-red": "FCE4D6",
-}
+DARK_BLUE   = "1F3864"
+MID_BLUE    = "2E75B6"
+LIGHT_BLUE  = "D6E4F0"
+WHITE       = "FFFFFF"
+LIGHT_GREY  = "F5F5F5"
+GREEN       = "E2EFDA"
+RED_BG      = "FCE4D6"
+YELLOW_BG   = "FFF2CC"
+
 
 def main():
     # loading the json file
     with open("hotel_bookings.json", "r") as file:
         data = json.load(file)
 
-    rows = flatten_reservations(data)
+    rows = flatten_reservations(data) 
 
     if not rows:
         raise ValueError("No data to write")
 
-    write_to_excel(rows, "hotel_report.xlsx")
+    wb = write_to_excel(rows)
+    wb = style_sheet(wb, list(rows[0].keys()))
+    wb.save("hotel_report.xlsx")
+
 
 
 def flatten_reservations(data: dict) -> list[dict]:
@@ -59,7 +62,7 @@ def flatten_reservations(data: dict) -> list[dict]:
         return None
 
 
-def write_to_excel(rows: list[dict], filename: str) -> None:
+def write_to_excel(rows: list[dict]) -> Workbook:
     wb = Workbook()
     ws = wb.active
     ws.title = "Reservations"
@@ -72,17 +75,17 @@ def write_to_excel(rows: list[dict], filename: str) -> None:
     for row in rows:
         ws.append([row.get(header, "") for header in headers])
 
-    style_sheet(ws, headers)
-
-    wb.save(filename)
+    return wb
 
 
-def style_sheet(ws, headers):
+def style_sheet(wb: Workbook, headers: list) -> Workbook:
+    ws = wb.active
+
     # Header row styling
     header_font = Font(bold=True, color="FFFFFF")
     header_fill = PatternFill(
-        start_color=colors["dark-blue"],
-        end_color=colors["dark-blue"],
+        start_color=DARK_BLUE,
+        end_color=DARK_BLUE,
         fill_type="solid",
     )
     header_alignment = Alignment(horizontal="center", vertical="center")
@@ -98,11 +101,11 @@ def style_sheet(ws, headers):
 
     # Alternating row colors
     white_fill = PatternFill(
-        start_color=colors["white"], end_color=colors["white"], fill_type="solid"
+        start_color=WHITE, end_color=WHITE, fill_type="solid"
     )
     light_grey_fill = PatternFill(
-        start_color=colors["light-grey"],
-        end_color=colors["light-grey"],
+        start_color=LIGHT_GREY,
+        end_color=LIGHT_GREY,
         fill_type="solid",
     )
 
@@ -110,10 +113,10 @@ def style_sheet(ws, headers):
     status_col = headers.index("Status") + 1
 
     status_colors = {
-        "Checked Out": colors["light-green"],
-        "Checked In": colors["light-blue"],
-        "Confirmed": colors["light-yellow"],
-        "Cancelled": colors["light-red"],
+        "Checked Out": GREEN,
+        "Checked In": LIGHT_BLUE,
+        "Confirmed": YELLOW_BG,
+        "Cancelled": RED_BG,
     }
 
     # applying the row color change and status color coding
@@ -180,6 +183,8 @@ def style_sheet(ws, headers):
         elif header == percent_column:
             for row in range(2, ws.max_row + 1):
                 ws.cell(row=row, column=col_num).number_format = '0"%"'
+
+    return wb
 
 
 if __name__ == "__main__":
