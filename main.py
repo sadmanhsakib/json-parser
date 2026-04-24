@@ -25,8 +25,8 @@ def main():
 
     wb = write_to_excel(rows)
     wb = style_sheet(wb, list(rows[0].keys()))
+    wb = write_summary(wb, rows)
     wb.save("hotel_report.xlsx")
-
 
 
 def flatten_reservations(data: dict) -> list[dict]:
@@ -186,6 +186,170 @@ def style_sheet(wb: Workbook, headers: list) -> Workbook:
 
     return wb
 
+
+def make_header_cell(cell, text):
+    """Style a single header cell: dark blue bg, white bold text, centered."""
+    cell.value = text
+    cell.font = Font(name="Arial", bold=True, color=WHITE, size=10)
+    cell.fill = PatternFill("solid", fgColor=DARK_BLUE)
+    cell.alignment = Alignment(horizontal="center", vertical="center")
+
+
+def write_summary(wb: Workbook, rows: list[dict]) -> Workbook:
+    ws = wb.create_sheet("Summary")
+    ws.sheet_view.showGridLines = False
+
+    # ── STEP 1: Aggregate everything in pure Python FIRST ─────────────────
+    # Rule: never read back from the worksheet to calculate.
+    # Always compute from the source list, then write once.
+    total_reservations = len(rows)
+    total_revenue = sum(
+        row["Total Charged"] for row in rows if row["Status"] != "Cancelled"
+    )
+    active_guests = sum(
+        1 for row in rows if row["Status"] in ("Checked In", "Confirmed")
+    )
+    avg_stay = sum(row["Nights"] for row in rows) / total_reservations
+
+    # ── Room type aggregation ──────────────────────────────────────────────
+    # Build a dict keyed by room type.
+    # Each value is another dict holding the stats we need.
+    room_stats = {}
+
+    for row in rows:
+        room_type = row["Room Type"]
+
+        # First time seeing this room type — initialize its bucket
+        if room_type not in room_stats:
+            room_stats[room_type] = {
+                "Reservations": 0,
+                "Total Revenue": 0.0,
+                "Rates": [],
+            }
+
+        room_stats[room_type]["Reservations"] += 1
+        room_stats[room_type]["Total Revenue"] = row["Total Charged"]
+        room_stats[room_type]["Rates"].append(row["Rate/Night"])
+
+    guest_stats = {}
+
+    for row in rows:
+        name = row["Guest Name"]
+
+        if name not in guest_stats:
+            guest_stats[name] = {
+                "Stays": 0,
+                "Total Spent": 0.0,
+                "Loyalty Tier": row["Loyalty Tier"]
+            }
+        guest_stats[name]["Stays"] += 1
+        guest_stats[name]["Total Spent"] += row["Total Charged"]
+        # Note: Loyalty Tier is set on first encounter.
+        # Safe here because the same guest always has the same tier in this dataset.
+
+    # ── STEP 2: Write the KPI block ───────────────────────────────────────
+    # We place KPIs in a 2-column grid starting at row 1.
+    # Layout:
+    #   B1: label        D1: label
+    #   B2: value        D2: value
+    #   (empty row 3)
+    #   B4: label        D4: label
+    #   B5: value        D5: value
+
+    for label, value, label_cell, value_cell in [
+        ("Total Reservations", total_reservations, "B1", "B2"),
+        ("Total Revenue", f"${total_revenue:,.2f}", "D1", "D2"),
+        ("Active Guests", active_guests, "B4", "B5"),
+        ("Avg Stay (nights)", round(avg_stay, 1), "D4", "D5"),
+    ]:
+        lc = ws[label_cell]
+        vc = ws[value_cell]
+
+        lc.value = label
+        lc.font = Font(name="Arial", bold=True, size=10, color=WHITE)
+        lc.fill = PatternFill("solid", fgColor=DARK_BLUE)
+        lc.alignment = Alignment(horizontal="center")
+
+        vc.value = value
+        vc.font = Font(name="Arial", bold=True, size=18, color=DARK_BLUE)
+        vc.fill = PatternFill("solid", fgColor=LIGHT_BLUE)
+        vc.alignment = Alignment(horizontal="center")
+
+    # ── STEP 3: Revenue by Room Type table ────────────────────────────────
+    # Starts at row 9 (rows 6-8 act as visual breathing room)
+
+    room_headers = ["Room Type", "Reservations", "Total Revenue", "Avg Rate/Night"]
+    start_row = 9
+
+    # Write header row
+    for column_index, header in enumerate(
+        room_headers, 2
+    ):  # start at column B (index 2)
+        make_header_cell(ws.cell(row=start_row, column=column_index), header)
+
+    # Sort room types by Total Revenue descending — most valuable room type first
+    sorted_rooms = sorted(
+        room_stats.items(), key=lambda x: x[1]["Total Revenue"], reverse=True
+    )
+
+    for row_index, (room_type, stats) in enumerate(sorted_rooms, start_row + 1):
+        avg_rate = sum(stats["Rates"]) / len(
+            stats["Rates"]
+        )  # average from the list we built
+        bg = WHITE if row_index % 2 == 0 else LIGHT_GREY  # alternating rows
+
+        data = [
+            room_type,
+            stats["Reservations"],
+            f"${stats['Total Revenue']:,.2f}",
+            f"${avg_rate:,.2f}",
+        ]
+        for column_index, val in enumerate(data, 2):
+            cell = ws.cell(row=row_index, column=column_index)
+            cell.value = val
+            cell.fill = PatternFill("solid", fgColor=bg)
+            cell.font = Font(name="Arial", size=10)
+            cell.alignment = Alignment(
+                horizontal="right" if column_index > 2 else "left"
+            )
+
+    # ── STEP 4: Top Guests table ──────────────────────────────────────────
+    # Starts at row 16 (leaves a gap after the room type table)
+
+    guest_headers = ["Guest Name", "Stays", "Total Spent", "Loyalty Tier"]
+    guest_start = 16
+
+    for ci, h in enumerate(guest_headers, 2):
+        make_header_cell(ws.cell(row=guest_start, column=ci), h)
+
+    # Sort by Total Spent descending — biggest spender first
+    sorted_guests = sorted(
+        guest_stats.items(), key=lambda x: x[1]["Total Spent"], reverse=True
+    )
+
+    for row_index, (name, stats) in enumerate(sorted_guests, guest_start + 1):
+        bg = WHITE if row_index % 2 == 0 else LIGHT_GREY
+        data = [
+            name,
+            stats["Stays"],
+            f"${stats['Total Spent']:,.2f}",
+            stats["Loyalty Tier"],
+        ]
+        for column_index, val in enumerate(data, 2):
+            cell = ws.cell(row=row_index, column=column_index)
+            cell.value = val
+            cell.fill = PatternFill("solid", fgColor=bg)
+            cell.font = Font(name="Arial", size=10)
+            cell.alignment = Alignment(
+                horizontal="right" if column_index in (3, 4) else "left"
+            )
+
+    # ── STEP 5: Column widths ─────────────────────────────────────────────
+    # B through E covers all our tables (we started at column 2)
+    for col, width in {"B": 22, "C": 15, "D": 16, "E": 14}.items():
+        ws.column_dimensions[col].width = width
+
+    return wb
 
 if __name__ == "__main__":
     start_time = time.time()
