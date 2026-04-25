@@ -8,6 +8,8 @@ __pycache__/
 
 test.py
 *.xlsx
+*csv
+/dummy-jsons
 
 # Distribution / packaging
 .Python

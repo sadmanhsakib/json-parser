@@ -1,4 +1,5 @@
 import json
+import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
@@ -14,21 +15,39 @@ LIGHT_YELLOW = "FFFFA6"
 
 
 def main():
-    # loading the json file
-    with open("hotel_bookings.json", "r") as file:
-        data = json.load(file)
+    try:
+        # loading the json file
+        with open("dummy-jsons/hotel_bookings.json", "r") as file:
+            data = json.load(file)
 
-    rows = flatten_reservations(data) 
+        inspect(data["reservations"])
 
-    if not rows:
-        raise ValueError("No data to write")
+        
+        rows = flatten_reservations(data)
 
-    wb = write_to_excel(rows)
-    wb = style_sheet(wb, list(rows[0].keys()))
-    wb = write_summary(wb, rows)
-    wb.save("hotel_report.xlsx")
+        wb = write_to_excel(rows)
+        wb = style_sheet(wb, list(rows[0].keys()))
+        wb = write_summary(wb, rows)
+        wb.save("hotel_report.xlsx")
+        return
+    except Exception as error:
+        print(error)
 
 
+def inspect(data: dict):
+    # understanding the shape
+    print(type(data)) # dict or list?
+    print(len(data)) # how many records
+
+    # if it's a list of dicts
+    df = pd.json_normalize(data)
+    print(df.shape)
+    print(df.dtypes)
+    print(df.head())
+
+    df.to_excel("test.xlsx", index=False)
+
+# handles the flattening and basic cleaning all together
 def flatten_reservations(data: dict) -> list[dict]:
     try:
         rows = []
@@ -52,10 +71,12 @@ def flatten_reservations(data: dict) -> list[dict]:
                 "Extras Total": sum(extra["charge"] for extra in reservation["extras"]),
                 "Taxes": reservation["pricing"]["taxes"],
                 "Total Charged": reservation["pricing"]["total_charged"],
-                "Payment Method": reservation["payment_method"].replace("_", "").title(),
+                "Payment Method": reservation["payment_method"].replace("_", " ").title(),
                 "Notes": reservation["notes"] or "",
             }
-            rows.append(row)
+            # deduplicationn
+            if row not in rows:
+                rows.append(row)
         return rows
     except Exception as error:
         print(error)
@@ -105,7 +126,7 @@ def style_sheet(wb: Workbook, headers: list) -> Workbook:
     for row in range(2, ws.max_row + 1):
         # checking for even and odd row number
         fill = white_fill if row % 2 == 0 else light_grey_fill
-            
+
         # adding the row color change
         for col in range(1, ws.max_column + 1):
             ws.cell(row=row, column=col).fill = fill
@@ -117,34 +138,10 @@ def style_sheet(wb: Workbook, headers: list) -> Workbook:
         if status_value in status_colors:
             status_cell.fill = PatternFill(fill_type="solid", fgColor=status_colors[status_value])
 
-    # Column widths
-    column_widths = {
-        "Reservation ID": 15,
-        "Status": 12,
-        "Guest Name": 20,
-        "Email": 25,
-        "Nationality": 12,
-        "Loyalty Tier": 12,
-        "Room Number": 12,
-        "Room Type": 15,
-        "Floor": 8,
-        "Beds": 8,
-        "Check-in": 12,
-        "Check-out": 12,
-        "Nights": 8,
-        "Rate/Night": 12,
-        "Discount %": 12,
-        "Extras Total": 12,
-        "Taxes": 10,
-        "Total Charged": 14,
-        "Payment Method": 18,
-        "Notes": 60,
-    }
-
     # freezes the rows before A2 (the header row)
     # when scrolling down the header row always remain visible
     ws.freeze_panes = "A2"
-    
+
     # using the header row as a reference for auto_filler function
     ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}1"
 
@@ -152,11 +149,13 @@ def style_sheet(wb: Workbook, headers: list) -> Workbook:
     currency_columns = ["Rate/Night", "Extras Total", "Taxes", "Total Charged"]
     percent_column = "Discount %"
 
+    # auto size columns
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        ws.column_dimensions[col[0].column_letter].width = max_len + 4
+
+    # adding the correct format
     for col_num, header in enumerate(headers, 1):
-        if header in column_widths:
-            ws.column_dimensions[get_column_letter(col_num)].width = column_widths[
-                header
-            ]
         if header in currency_columns:
             for row in range(2, ws.max_row + 1):
                 ws.cell(row=row, column=col_num).number_format = "$#,##0.00"
@@ -304,10 +303,10 @@ def write_summary(wb: Workbook, rows: list[dict]) -> Workbook:
                 horizontal="right" if column_index in (3, 4) else "left"
             )
 
-    # ── STEP 5: Column widths ─────────────────────────────────────────────
-    # B through E covers all our tables (we started at column 2)
-    for col, width in {"B": 22, "C": 15, "D": 16, "E": 14}.items():
-        ws.column_dimensions[col].width = width
+    # auto size columns
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        ws.column_dimensions[col[0].column_letter].width = max_len + 4
 
     return wb
 
