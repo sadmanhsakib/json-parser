@@ -13,13 +13,10 @@ def main():
         flattened_data = flatten_reservations(data)
         wb = parser.write_to_excel(flattened_data, "Orders")
         wb = parser.generic_style_sheet(wb)
+        wb = load_workbook("orders.xlsx")
+        wb = custom_style(wb)
+        
         wb.save("orders.xlsx")
-
-    wb = load_workbook("orders.xlsx")
-
-    wb = custom_style(wb)
-
-    wb.save("orders.xlsx")
 
 
 def flatten_reservations(data: dict) -> list[dict]:
@@ -53,28 +50,11 @@ def flatten_reservations(data: dict) -> list[dict]:
 
 def custom_style(wb: Workbook) -> Workbook:
     ws = wb.active
-    ws1 = wb.create_sheet("asdasdasd")
+
     headers = []
     for cell in ws[1]:
         headers.append(cell.value)
 
-    colors = {
-        "Paid": parser.LIGHT_GREEN,
-        "Pending": parser.LIGHT_YELLOW,
-        "Refunded": parser.LIGHT_BLUE,
-        "Failed": parser.LIGHT_RED,
-    }
-    color_column = headers.index("Payment Status") + 1
-
-    for row in range(2, ws.max_row + 1):
-        status_cell = ws.cell(row=row, column=color_column)
-        status_value = status_cell.value
-
-        # changing the color for each cell in status column
-        if status_value in colors:
-            status_cell.fill = PatternFill(
-                fill_type="solid", fgColor=colors[status_value]
-            )
     colors = {
         "Paid": parser.LIGHT_GREEN,
         "Pending": parser.LIGHT_YELLOW,
@@ -108,4 +88,5 @@ def custom_style(wb: Workbook) -> Workbook:
     return wb
 
 
-main()
+if __name__ == "__main__":
+    main()
