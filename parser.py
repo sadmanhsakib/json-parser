@@ -6,11 +6,11 @@ from openpyxl.utils import get_column_letter
 
 DARK_BLUE = "1F3864"
 WHITE = "FFFFFF"
-LIGHT_BLUE = "729FCF"
+LIGHT_BLUE = "D6E4F0"
 LIGHT_GREY = "F5F5F5"
-LIGHT_GREEN = "77BC65"
-LIGHT_RED = "FF6D6D"
-LIGHT_YELLOW = "FFFF6D"
+LIGHT_GREEN = "E2EFDA"
+LIGHT_RED = "FCE4D6"
+LIGHT_YELLOW = "FFF2CC"
 
 
 def main():
@@ -144,7 +144,7 @@ def custom_style(wb: Workbook) -> Workbook:
     for cell in ws[1]:
         headers.append(cell.value)
 
-    colors = {
+    STATUS_COLORS = {
         "Checked Out": LIGHT_GREEN,
         "Checked In": LIGHT_BLUE,
         "Confirmed": LIGHT_YELLOW,
@@ -157,21 +157,21 @@ def custom_style(wb: Workbook) -> Workbook:
         status_value = status_cell.value
 
         # changing the color for each cell in status column
-        if status_value in colors:
+        if status_value in STATUS_COLORS:
             status_cell.fill = PatternFill(
-                fill_type="solid", fgColor=colors[status_value]
+                fill_type="solid", fgColor=STATUS_COLORS[status_value]
             )
 
     # Number formats
     currency_columns = ["Rate/Night", "Extras Total", "Taxes", "Total Charged"]
-    percent_column = "Discount %"
+    percent_column = ["Discount %"]
 
     # adding the correct format
     for col_num, header in enumerate(headers, 1):
         if header in currency_columns:
             for row in range(2, ws.max_row + 1):
                 ws.cell(row=row, column=col_num).number_format = "$#,##0.00"
-        elif header == percent_column:
+        elif header in percent_column:
             for row in range(2, ws.max_row + 1):
                 ws.cell(row=row, column=col_num).number_format = '0"%"'
     return wb
@@ -189,6 +189,7 @@ def write_summary(wb: Workbook, rows: list[dict]) -> Workbook:
     ws = wb.create_sheet("Summary")
     ws.sheet_view.showGridLines = False
 
+    """Calculation Block - calculating all the data before writing"""
     total_reservations = len(rows)
     total_revenue = sum(
         row["Total Charged"] for row in rows if row["Status"] != "Cancelled"
@@ -231,6 +232,7 @@ def write_summary(wb: Workbook, rows: list[dict]) -> Workbook:
         # Note: Loyalty Tier is set on first encounter.
         # Safe here because the same guest always has the same tier in this dataset.
 
+    """Writing the data to the sheet"""
     for label, value, label_cell, value_cell in [
         ("Total Reservations", total_reservations, "B1", "B2"),
         ("Total Revenue", f"${total_revenue:,.2f}", "D1", "D2"),
