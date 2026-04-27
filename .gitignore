@@ -8,6 +8,7 @@ __pycache__/
 
 test.py
 *.xlsx
+*.xlsx#
 *csv
 /dummy-jsons
 

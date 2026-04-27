@@ -1,21 +1,24 @@
 from datetime import datetime
-import pandas as pd
 import json
 import parser
-from openpyxl import Workbook, load_workbook
-from openpyxl.styles import PatternFill, Font, Alignment
+from openpyxl import Workbook
+from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 
 
 def main():
+    file_name = "dummy-jsons/ecommerce_orders.json"
 
-    with open("dummy-jsons/ecommerce_orders.json", "r") as file:
-        data = json.load(file)
-        rows = flatten_reservations(data)
-        wb = parser.write_to_excel(rows, "Orders")
-        wb = parser.generic_style_sheet(wb)
-        wb = custom_style(wb)
-        wb = write_summary(wb, data["payload"]["orders"], rows)
-        wb.save("orders.xlsx")
+    # loading the json file
+    with open(file_name, "r") as file:
+        raw_json = json.load(file)
+
+    rows = flatten_reservations(raw_json)
+
+    wb = parser.write_to_excel(rows, ws_title="Orders")
+    wb = parser.generic_style_sheet(wb)
+    wb = custom_style(wb)
+    wb = write_summary(wb, raw_json["payload"]["orders"], rows)
+    wb.save("orders_report.xlsx")
 
 
 def flatten_reservations(data: dict) -> list[dict]:
@@ -94,7 +97,7 @@ def custom_style(wb: Workbook) -> Workbook:
     return wb
 
 
-def write_summary(wb: Workbook, data: dict, rows: list[dict]) -> Workbook:
+def write_summary(wb: Workbook, raw_json: dict, rows: list[dict]) -> Workbook:
     ws = wb.create_sheet("Summary")
     ws.sheet_view.showGridLines = False
 
@@ -106,7 +109,7 @@ def write_summary(wb: Workbook, data: dict, rows: list[dict]) -> Workbook:
 
     items_sold = 0
 
-    for order in data:
+    for order in raw_json:
         for item in order["items"]:
             items_sold += item["qty"]
 
@@ -123,7 +126,7 @@ def write_summary(wb: Workbook, data: dict, rows: list[dict]) -> Workbook:
 
     item_stats = {}
 
-    for order in data:
+    for order in raw_json:
         for item in order["items"]:
             item_name = item["name"]
             item_qty = item["qty"]
@@ -132,11 +135,12 @@ def write_summary(wb: Workbook, data: dict, rows: list[dict]) -> Workbook:
                 item_stats[item_name] = 0
             item_stats[item_name] += item_qty
 
+    """Writing block - writing the summary stats"""
     for label, value, label_cell, value_cell in [
         ("Total Orders", total_orders, "B1", "B2"),
-        ("Total Revenue", f"${total_revenue:,.2f}", "D1", "D2"),
+        ("Total Revenue", f"${total_revenue:,.2f}", "F1", "F2"),
         ("Items Sold", items_sold, "B4", "B5"),
-        ("Avg Order Value", f"${avg_order_value:,.2f}", "D4", "D5"),
+        ("Avg Order Value", f"${avg_order_value:,.2f}", "F4", "F5"),
     ]:
         lc = ws[label_cell]
         vc = ws[value_cell]
@@ -145,11 +149,23 @@ def write_summary(wb: Workbook, data: dict, rows: list[dict]) -> Workbook:
         lc.font = Font(name="Noto Sans Lisu", bold=True, size=10, color=parser.WHITE)
         lc.fill = PatternFill("solid", fgColor=parser.DARK_BLUE)
         lc.alignment = Alignment(horizontal="center")
+        lc.border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin"),
+        )
 
         vc.value = value
         vc.font = Font(name="Bahnschrift", bold=True, size=18, color=parser.DARK_BLUE)
         vc.fill = PatternFill("solid", fgColor=parser.LIGHT_BLUE)
         vc.alignment = Alignment(horizontal="center")
+        vc.border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin"),
+        )
 
     status_headers = ["Order Status", "Orders"]
     # Starts at row 9 (rows 6-8 act as visual breathing room)
@@ -166,7 +182,9 @@ def write_summary(wb: Workbook, data: dict, rows: list[dict]) -> Workbook:
     sorted_order = sorted(order_stats.items(), key=lambda x: x[1], reverse=True)
 
     for row_index, (status, stats) in enumerate(sorted_order, status_start_row + 1):
-        bg = parser.WHITE if row_index % 2 == 0 else parser.LIGHT_GREY  # alternating rows
+        bg = (
+            parser.WHITE if row_index % 2 == 0 else parser.LIGHT_GREY
+        )  # alternating rows
 
         data = [
             status,
@@ -180,30 +198,40 @@ def write_summary(wb: Workbook, data: dict, rows: list[dict]) -> Workbook:
             cell.alignment = Alignment(
                 horizontal="right" if column_index > 2 else "left"
             )
+            cell.border = Border(
+                left=Side(style="thin"),
+                right=Side(style="thin"),
+                top=Side(style="thin"),
+                bottom=Side(style="thin"),
+            )
 
     item_headers = ["Item Name", "Quantity Sold"]
-    item_start_row = 16
+    item_start_row = 9
 
     for column_index, header in enumerate(item_headers, 2):
         parser.make_header_cell(
-            ws.cell(row=item_start_row, column=column_index), header
+            ws.cell(row=item_start_row, column=3 + column_index), header
         )
 
     sorted_items = sorted(item_stats.items(), key=lambda x: x[1], reverse=True)
 
     for row_index, (name, stats) in enumerate(sorted_items, item_start_row + 1):
         bg = parser.WHITE if row_index % 2 == 0 else parser.LIGHT_GREY
-        data = [
-            name,
-            stats,
-        ]
+        data = [name, stats]
+
         for column_index, val in enumerate(data, 2):
-            cell = ws.cell(row=row_index, column=column_index)
+            cell = ws.cell(row=row_index, column=3 + column_index)
             cell.value = val
             cell.fill = PatternFill("solid", fgColor=bg)
             cell.font = Font(name="Bahnschrift", size=10)
             cell.alignment = Alignment(
                 horizontal="right" if column_index in (3, 4) else "left"
+            )
+            cell.border = Border(
+                left=Side(style="thin"),
+                right=Side(style="thin"),
+                top=Side(style="thin"),
+                bottom=Side(style="thin"),
             )
 
     # auto size columns
