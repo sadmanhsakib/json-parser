@@ -2,51 +2,59 @@ from datetime import datetime
 import json
 import parser
 from openpyxl import Workbook
-from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 
 def main():
-    file_name = "dummy-jsons/ecommerce_orders.json"
+    json_filename = "data/user_data.json"
+    xlsx_filename = json_filename.replace(".json", ".xlsx")
 
     # loading the json file
-    with open(file_name, "r") as file:
+    with open(json_filename, "r") as file:
         raw_json = json.load(file)
 
     rows = flatten_reservations(raw_json)
 
-    wb = parser.write_to_excel(rows, ws_title="Orders")
-    wb = parser.generic_style_sheet(wb)
-    wb = custom_style(wb)
-    wb = write_summary(wb, raw_json["payload"]["orders"], rows)
-    wb.save("orders_report.xlsx")
+    if rows:
+        wb = parser.write_to_excel(rows, ws_title="Users")
+        wb = parser.img_parser(wb, "Picture")
+        wb = parser.apply_generic_style(wb)
+
+        # wb = apply_custom_style(wb)
+        # wb = write_summary(wb, raw_json["payload"]["orders"], rows)
+        wb.save(xlsx_filename)
+    else:
+        print("No rows to write")
 
 
 def flatten_reservations(data: dict) -> list[dict]:
     try:
         rows = []
-        for order in data["payload"]["orders"]:
+        for result in data["results"]:
             row = {
-                "Order ID": order["order_id"],
-                "Customer Name": order["customer"]["name"],
-                "Email": order["customer"]["email"],
-                "Country": order["customer"]["country"],
-                "Items Ordered": ", ".join([item["name"] for item in order["items"]]),
-                "Shipping Method": order["shipping"]["method"].title(),
-                "Payment Method": order["payment"]["method"].replace("_", " ").title(),
-                "Payment Status": order["payment"]["status"].title(),
-                "ETA(Days)": order["shipping"]["estimated_days"],
-                "Order Status": order["status"].replace("_", " ").title(),
-                "Created At": datetime.fromisoformat(order["created_at"]).strftime(
+                "Picture": result["picture"]["thumbnail"],
+                "Name": f"{result['name']['title']} {result['name']['first']} {result['name']['last']}",
+                "Gender": result["gender"].title(),
+                "Phone": result["phone"],
+                "Cell": result["cell"],
+                "Email": result["email"],
+                "Location": f"{result['location']['street']['number']} {result['location']['street']['name']}",
+                "City": result["location"]["city"],
+                "State": result["location"]["state"],
+                "Country": result["location"]["country"],
+                "Postcode": result["location"]["postcode"],
+                "Coordinates": f"{result['location']['coordinates']['latitude']}, {result['location']['coordinates']['longitude']}",
+                "Timezone": result["location"]["timezone"]["offset"],
+                "Username": result["login"]["username"],
+                "Password": result["login"]["password"],
+                "Date of Birth": datetime.fromisoformat(result["dob"]["date"]).strftime(
                     "%Y-%m-%d %H:%M:%S"
                 ),
-                "Shipping Cost": order["shipping"]["cost"],
-                "Subtotal": sum(
-                    item["unit_price"] * item["qty"] for item in order["items"]
-                ),
-                "Order Total": sum(
-                    item["unit_price"] * item["qty"] for item in order["items"]
-                )
-                + order["shipping"]["cost"],
+                "Age": result["dob"]["age"],
+                "Registration Date": datetime.fromisoformat(
+                    result["registered"]["date"]
+                ).strftime("%Y-%m-%d %H:%M:%S"),
+                "Account Age": result["registered"]["age"],
             }
             # deduplicationn
             if row not in rows:
@@ -57,7 +65,7 @@ def flatten_reservations(data: dict) -> list[dict]:
         return None
 
 
-def custom_style(wb: Workbook) -> Workbook:
+def apply_custom_style(wb: Workbook) -> Workbook:
     ws = wb.active
 
     headers = []

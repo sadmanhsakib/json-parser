@@ -1,9 +1,11 @@
-import json
+import json, io
 import pandas as pd
-import xmltodict
+import xmltodict, urllib
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.drawing.image import Image
+
 
 DARK_BLUE = "1F3864"
 WHITE = "FFFFFF"
@@ -36,44 +38,6 @@ def inspect(data: dict):
     print(df.head())
 
 
-# handles the flattening and basic cleaning all together
-def flatten_reservations(data: dict) -> list[dict]:
-    try:
-        rows = []
-        for reservation in data["reservations"]:
-            row = {
-                "Reservation ID": reservation["reservation_id"],
-                "Status": reservation["status"].replace("_", " ").title(),
-                "Guest Name": reservation["guest"]["full_name"],
-                "Email": reservation["guest"]["email"],
-                "Nationality": reservation["guest"]["nationality"],
-                "Loyalty Tier": reservation["guest"]["loyalty_tier"],
-                "Room Number": reservation["room"]["room_number"],
-                "Room Type": reservation["room"]["type"].replace("_", " ").title(),
-                "Floor": reservation["room"]["floor"],
-                "Beds": reservation["room"]["beds"],
-                "Check-in": reservation["dates"]["check_in"],
-                "Check-out": reservation["dates"]["check_out"],
-                "Nights": reservation["pricing"]["nights"],
-                "Rate/Night": reservation["pricing"]["rate_per_night"],
-                "Discount %": reservation["pricing"]["discount_pct"],
-                "Extras Total": sum(extra["charge"] for extra in reservation["extras"]),
-                "Taxes": reservation["pricing"]["taxes"],
-                "Total Charged": reservation["pricing"]["total_charged"],
-                "Payment Method": reservation["payment_method"]
-                .replace("_", " ")
-                .title(),
-                "Notes": reservation["notes"] or "",
-            }
-            # deduplicationn
-            if row not in rows:
-                rows.append(row)
-        return rows
-    except Exception as error:
-        print(error)
-        return None
-
-
 def write_to_excel(rows: list[dict], ws_title: str) -> Workbook:
     wb = Workbook()
     ws = wb.active
@@ -90,14 +54,14 @@ def write_to_excel(rows: list[dict], ws_title: str) -> Workbook:
     return wb
 
 
-def generic_style_sheet(wb: Workbook) -> Workbook:
+def apply_generic_style(wb: Workbook) -> Workbook:
     ws = wb.active
 
     headers = []
     for cell in ws[1]:
         headers.append(cell.value)
 
-    # adding the header
+    # adding the header style
     for col_num, value in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col_num)
         make_header_cell(cell, value)
@@ -133,6 +97,14 @@ def generic_style_sheet(wb: Workbook) -> Workbook:
     for col in ws.columns:
         max_len = max(len(str(cell.value or "")) for cell in col)
         ws.column_dimensions[col[0].column_letter].width = max_len + 4
+
+    center_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    for row_idx in range(1, ws.max_row + 1):
+        for col_idx in range(1, ws.max_column + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            # Align center
+            cell.alignment = center_alignment
     return wb
 
 
@@ -148,3 +120,52 @@ def make_header_cell(cell, text):
         top=Side(style="thin"),
         bottom=Side(style="thin"),
     )
+
+
+def img_parser(wb: Workbook, column_name: str):
+    ws = wb.active
+
+    # Extract headers and data from worksheet
+    data_points = list(ws.values)
+    if not data_points:
+        return wb
+
+    headers = data_points[0]
+    data_rows = data_points[1:]
+
+    # Map column name to column index and letter
+    try:
+        col_idx = list(headers).index(column_name) + 1
+        col_letter = get_column_letter(col_idx)
+    except ValueError:
+        print(f"Column '{column_name}' not found")
+        return wb
+
+    # getting all the images
+    for i, row in enumerate(data_rows, 1):
+        url = row[col_idx - 1]
+
+        # skipping if no url or not a string
+        if pd.isna(url) or not isinstance(url, str) or not url.startswith("http"):
+            continue
+
+        try:
+            # Download image into memory
+            with urllib.request.urlopen(url) as response:
+                img_data = response.read()
+
+            img_file = io.BytesIO(img_data)
+            img = Image(img_file)
+
+            # Excel height is in points, width is roughly in characters
+            ws.row_dimensions[i + 1].height = img.height * 0.75
+
+            ws.add_image(img, f"{col_letter}{i + 1}")
+
+            # Clear the URL text so only the image is visible
+            ws.cell(row=i + 1, column=col_idx).value = ""
+
+        except Exception as e:
+            print(f"Error processing image {i}: {e}")
+
+    return wb

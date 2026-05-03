@@ -10,7 +10,7 @@ test.py
 *.xlsx
 *.xlsx#
 *csv
-/dummy-jsons
+/data
 
 # Distribution / packaging
 .Python
